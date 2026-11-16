@@ -84,3 +84,4 @@ A full-stack agency and project management platform featuring role-based access 
 | `POST` | `/api/auth/logout` | Clear authentication cookie |
 | `GET` | `/api/auth/me` | Fetch authenticated user profile |
 | `GET` | `/api/auth/roles` | List available roles and descriptions |
+
