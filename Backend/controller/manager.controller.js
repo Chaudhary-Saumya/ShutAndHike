@@ -24,7 +24,7 @@ const CreateManager = async (req, res, next) => {
       email: email.trim().toLowerCase(),
       password: password.trim(),
       role: ROLES.MANAGER,
-      phone: phone ? String(phone).trim() : null,
+      phone: phone ? Number(phone) : null,
       designation: designation ? designation.trim() : 'Manager',
       department: department ? department.trim() : 'Operations',
       createdBy: adminId,
@@ -34,15 +34,8 @@ const CreateManager = async (req, res, next) => {
     const populated = await User.findById(manager._id).populate('createdBy', 'name email role');
 
     return res.status(201).json({
-      success: true,
-      message: 'Manager created successfully.',
-      data: {
-        manager: populated
-      },
-      // Backward-compatibility keys
       msg: 'manager created successfully',
-      CreateManager: populated,
-      manager: populated
+      CreateManager: populated
     });
   } catch (error) {
     next(error);
@@ -88,7 +81,6 @@ const ReadManager = async (req, res, next) => {
       success: true,
       message: 'Managers retrieved successfully.',
       data: {
-        managers,
         pagination: {
           total,
           page,
@@ -130,9 +122,7 @@ const GetByIdManager = async (req, res, next) => {
     }
 
     return res.status(200).json({
-      success: true,
-      data: { manager },
-      manager
+      success: true,manager
     });
   } catch (error) {
     next(error);
@@ -193,13 +183,7 @@ const UpdateManager = async (req, res, next) => {
     const updated = await User.findById(id).populate('createdBy', 'name email role');
 
     return res.status(200).json({
-      success: true,
-      message: 'Manager updated successfully.',
-      data: {
-        manager: updated
-      },
-      // Backward-compatibility keys
-      msg: 'Manager update successfully',
+      success: true, msg: 'Manager update successfully',
       UpdateManager: updated
     });
   } catch (error) {
@@ -234,11 +218,6 @@ const DeleteManager = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: 'Manager deleted successfully.',
-      data: {
-        manager: deletedManager
-      },
-      // Backward-compatibility keys
-      msg: 'Manager deleted successfully',
       DeleteManager: deletedManager
     });
   } catch (error) {
@@ -251,11 +230,5 @@ module.exports = {
   ReadManager,
   GetByIdManager,
   UpdateManager,
-  DeleteManager,
-  // Aliases for modern naming
-  createManager: CreateManager,
-  getAllManagers: ReadManager,
-  getManagerById: GetByIdManager,
-  updateManager: UpdateManager,
-  deleteManager: DeleteManager
+  DeleteManager
 };

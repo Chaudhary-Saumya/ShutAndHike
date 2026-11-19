@@ -36,9 +36,15 @@ const userSchema = new mongoose.Schema(
       default: ROLES.ADMIN
     },
     phone: {
-      type: String,
-      trim: true,
-      default: null
+      type: Number,
+      default: null,
+      validate: {
+        validator: function (v) {
+          if (v === null || v === undefined) return true;
+          return v >= 1000000000 && v <= 9999999999;
+        },
+        message: 'Phone number must be exactly 10 digits'
+      }
     },
     designation: {
       type: String,
@@ -92,13 +98,12 @@ const userSchema = new mongoose.Schema(
 );
 
 // Keep userId and createdBy in sync
-userSchema.pre('save', function (next) {
+userSchema.pre('save', function () {
   if (this.createdBy && !this.userId) {
     this.userId = this.createdBy;
   } else if (this.userId && !this.createdBy) {
     this.createdBy = this.userId;
   }
-  next();
 });
 
 // Password hashing

@@ -1,6 +1,5 @@
 const { z } = require('zod');
-
-const mongoIdRegex = /^[0-9a-fA-F]{24}$/;
+const { phoneSchema, mongoIdRegex } = require('./common.validator');
 
 const createEmployeeSchema = z.object({
   name: z
@@ -17,12 +16,7 @@ const createEmployeeSchema = z.object({
     .string({ required_error: 'Password is required' })
     .min(6, 'Password must be at least 6 characters long')
     .max(128, 'Password cannot exceed 128 characters'),
-  phone: z
-    .string()
-    .trim()
-    .optional()
-    .nullable()
-    .transform((val) => (val === '' ? undefined : val)),
+  phone: phoneSchema,
   designation: z.string().trim().max(100).optional().default('Employee'),
   department: z.string().trim().max(100).optional().default('Delivery'),
   reportingTo: z
@@ -36,12 +30,7 @@ const updateEmployeeSchema = z.object({
   name: z.string().trim().min(2).max(100).optional(),
   email: z.string().trim().toLowerCase().email().optional(),
   password: z.string().min(6).max(128).optional(),
-  phone: z
-    .string()
-    .trim()
-    .optional()
-    .nullable()
-    .transform((val) => (val === '' ? undefined : val)),
+  phone: phoneSchema,
   designation: z.string().trim().max(100).optional(),
   department: z.string().trim().max(100).optional(),
   reportingTo: z

@@ -12,13 +12,12 @@ const getCookieOptions = () => {
 };
 
 /**
- * Register Admin Account.
- * Public registration is strictly restricted to Admin accounts only.
- * Managers and Employees cannot self-register; they are created by higher roles.
+ * Register a new user account.
+ * Accepts any valid role from the request body (Admin, Manager, Employee, Client).
  */
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, phone, designation } = req.body;
+    const { name, email, password, role, phone, designation } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -28,14 +27,13 @@ const register = async (req, res, next) => {
       });
     }
 
-    // Public registration strictly creates an Admin account
     const user = await User.create({
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password: password.trim(),
-      role: ROLES.ADMIN,
-      phone: phone ? String(phone).trim() : null,
-      designation: designation ? designation.trim() : 'System Administrator'
+      role: role || ROLES.ADMIN,
+      phone: phone ? Number(phone) : null,
+      designation: designation ? designation.trim() : null
     });
 
     const token = user.generateAuthToken();
@@ -43,7 +41,7 @@ const register = async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Admin account registered successfully.',
+      message: 'User registered successfully.',
       data: {
         user,
         token

@@ -83,7 +83,10 @@ A full-stack agency and project management platform featuring role-based access 
 | `POST` | `/api/auth/login` | Authenticate and issue JWT / secure cookie |
 | `POST` | `/api/auth/logout` | Clear authentication cookie |
 | `GET` | `/api/auth/me` | Fetch authenticated user profile |
+| `PATCH` | `/api/auth/change-password` | Update authenticated user password |
 | `GET` | `/api/auth/roles` | List available roles and descriptions |
+
+---
 
 ## Manager API Endpoints
 
@@ -91,6 +94,7 @@ A full-stack agency and project management platform featuring role-based access 
 | :--- | :--- | :--- |
 | `POST` | `/api/manager/create-manager` | Create a new manager account (`name`, `email`, `password`, `phone`, `designation`) |
 | `GET` | `/api/manager/get-manager` | Fetch all manager accounts with creator info |
+| `GET` | `/api/manager/get-manager/:id` | Fetch single manager account by ID |
 | `PUT` | `/api/manager/update-manager/:id` | Update manager account details by ID |
 | `DELETE` | `/api/manager/delete-manager/:id` | Delete a manager account by ID |
 
@@ -100,8 +104,20 @@ A full-stack agency and project management platform featuring role-based access 
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/employee/create-employee` | Create a new employee account (Admin only) |
+| `POST` | `/api/employee/create-employee` | Create a new employee account (Admin and Manager) |
 | `GET` | `/api/employee/get-employee` | Fetch all employee accounts |
 | `GET` | `/api/employee/get-employee/:id` | Fetch single employee account by ID |
 | `PUT` | `/api/employee/update-employee/:id` | Update employee account by ID |
 | `DELETE` | `/api/employee/delete-employee/:id` | Delete employee account by ID |
+
+---
+
+## Client API Endpoints
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/client/create-client` | Create a new client account (`name`, `email`, `password`, `phone`, `companyName`, `industry`, `billingAddress`, `reportingTo`) |
+| `GET` | `/api/client/get-client` | Fetch all client accounts with pagination & search |
+| `GET` | `/api/client/get-client/:id` | Fetch single client account by ID |
+| `PUT` | `/api/client/update-client/:id` | Update client account details by ID |
+| `DELETE` | `/api/client/delete-client/:id` | Delete a client account by ID (Admin only) |

@@ -31,7 +31,7 @@ const CreateEmployee = async (req, res, next) => {
       email: email.trim().toLowerCase(),
       password: password.trim(),
       role: ROLES.EMPLOYEE,
-      phone: phone ? String(phone).trim() : null,
+      phone: phone ? Number(phone) : null,
       designation: designation ? designation.trim() : 'Employee',
       department: department ? department.trim() : 'Operations',
       createdBy: creatorId,
@@ -46,13 +46,7 @@ const CreateEmployee = async (req, res, next) => {
     return res.status(201).json({
       success: true,
       message: 'Employee created successfully.',
-      data: {
-        employee: populated
-      },
-      // Backward-compatibility keys
-      msg: 'Employee created successfully',
-      CreateEmployee: populated,
-      employee: populated
+      CreateEmployee: populated
     });
   } catch (error) {
     next(error);
@@ -105,9 +99,7 @@ const GetEmployee = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Employees retrieved successfully.',
       data: {
-        employees,
         pagination: {
           total,
           page,
@@ -159,10 +151,8 @@ const GetByIdEmployee = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      data: { employee },
       msg: 'Employee fetched successfully',
-      GetByIdEmployee: employee,
-      employee
+      GetByIdEmployee: employee
     });
   } catch (error) {
     next(error);
@@ -230,11 +220,6 @@ const UpdateEmployee = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: 'Employee updated successfully.',
-      data: {
-        employee: updated
-      },
-      // Backward-compatibility keys
-      msg: 'Employee updated successfully',
       UpdateEmployee: updated
     });
   } catch (error) {
@@ -269,11 +254,6 @@ const DeleteEmployee = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: 'Employee deleted successfully.',
-      data: {
-        employee: deletedEmployee
-      },
-      // Backward-compatibility keys
-      msg: 'Employee deleted successfully',
       DeleteEmployee: deletedEmployee
     });
   } catch (error) {
@@ -286,11 +266,5 @@ module.exports = {
   GetEmployee,
   GetByIdEmployee,
   UpdateEmployee,
-  DeleteEmployee,
-  // Modern aliases
-  createEmployee: CreateEmployee,
-  getAllEmployees: GetEmployee,
-  getEmployeeById: GetByIdEmployee,
-  updateEmployee: UpdateEmployee,
-  deleteEmployee: DeleteEmployee
+  DeleteEmployee
 };

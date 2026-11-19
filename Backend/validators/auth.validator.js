@@ -1,6 +1,7 @@
 const { z } = require('zod');
+const { phoneSchema } = require('./common.validator');
+const { ROLE_VALUES } = require('../config/roles');
 
-// Public registration is strictly for Admin
 const registerAdminSchema = z.object({
   name: z
     .string({ required_error: 'Name is required' })
@@ -16,12 +17,10 @@ const registerAdminSchema = z.object({
     .string({ required_error: 'Password is required' })
     .min(6, 'Password must be at least 6 characters long')
     .max(128, 'Password cannot exceed 128 characters'),
-  phone: z
-    .string()
-    .trim()
-    .optional()
-    .nullable()
-    .transform((val) => (val === '' ? undefined : val)),
+  role: z
+    .enum(ROLE_VALUES, { message: `Role must be one of: ${ROLE_VALUES.join(', ')}` })
+    .optional(),
+  phone: phoneSchema,
   designation: z.string().trim().max(100).optional()
 });
 
@@ -48,7 +47,7 @@ const changePasswordSchema = z.object({
 
 module.exports = {
   registerAdminSchema,
-  registerSchema: registerAdminSchema, // alias for backward-compatibility
+  registerSchema: registerAdminSchema,
   loginSchema,
   changePasswordSchema
 };
