@@ -1,4 +1,5 @@
 const User = require('../models/user.model');
+const { ROLES } = require('../config/roles');
 
 const getCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -10,9 +11,14 @@ const getCookieOptions = () => {
   };
 };
 
+/**
+ * Register Admin Account.
+ * Public registration is strictly restricted to Admin accounts only.
+ * Managers and Employees cannot self-register; they are created by higher roles.
+ */
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, phone, designation } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -22,11 +28,14 @@ const register = async (req, res, next) => {
       });
     }
 
+    // Public registration strictly creates an Admin account
     const user = await User.create({
-      name,
-      email,
-      password,
-      role
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      password: password.trim(),
+      role: ROLES.ADMIN,
+      phone: phone ? String(phone).trim() : null,
+      designation: designation ? designation.trim() : 'System Administrator'
     });
 
     const token = user.generateAuthToken();
@@ -34,7 +43,7 @@ const register = async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      message: 'User registered successfully.',
+      message: 'Admin account registered successfully.',
       data: {
         user,
         token
@@ -45,6 +54,9 @@ const register = async (req, res, next) => {
   }
 };
 
+/**
+ * Login for any valid active role (Admin, Manager, Employee, Client)
+ */
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -68,7 +80,7 @@ const login = async (req, res, next) => {
     if (!user.isActive) {
       return res.status(403).json({
         success: false,
-        message: 'Account is deactivated. Please contact an administrator.'
+        message: 'Your account is deactivated. Please contact an administrator.'
       });
     }
 
@@ -105,18 +117,59 @@ const logout = async (req, res) => {
   });
 };
 
-const getMe = async (req, res) => {
-  return res.status(200).json({
-    success: true,
-    data: {
-      user: req.user
+const getMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .populate('createdBy', 'name email role')
+      .populate('reportingTo', 'name email role');
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        user
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user._id).select('+password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found.'
+      });
     }
-  });
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Incorrect current password.'
+      });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password updated successfully.'
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = {
   register,
   login,
   logout,
-  getMe
+  getMe,
+  changePassword
 };

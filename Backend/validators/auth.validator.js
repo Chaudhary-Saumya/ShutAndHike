@@ -1,28 +1,28 @@
 const { z } = require('zod');
-const { ROLE_VALUES, ROLES } = require('../config/roles');
 
-const registerSchema = z.object({
+// Public registration is strictly for Admin
+const registerAdminSchema = z.object({
   name: z
-    .string({ required_error: 'Name is required', invalid_type_error: 'Name must be a string' })
+    .string({ required_error: 'Name is required' })
     .trim()
     .min(2, 'Name must be at least 2 characters')
-    .max(50, 'Name cannot exceed 50 characters'),
+    .max(100, 'Name cannot exceed 100 characters'),
   email: z
     .string({ required_error: 'Email is required' })
     .trim()
     .toLowerCase()
-    .email('Invalid email address format'),
+    .email('Please provide a valid email address'),
   password: z
     .string({ required_error: 'Password is required' })
-    .min(8, 'Password must be at least 8 characters long')
-    .max(64, 'Password cannot exceed 64 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number')
-    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
-  role: z
-    .enum(ROLE_VALUES, { message: `Role must be one of: ${ROLE_VALUES.join(', ')}` })
-    .default(ROLES.CLIENT)
+    .min(6, 'Password must be at least 6 characters long')
+    .max(128, 'Password cannot exceed 128 characters'),
+  phone: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((val) => (val === '' ? undefined : val)),
+  designation: z.string().trim().max(100).optional()
 });
 
 const loginSchema = z.object({
@@ -30,13 +30,25 @@ const loginSchema = z.object({
     .string({ required_error: 'Email is required' })
     .trim()
     .toLowerCase()
-    .email('Invalid email address format'),
+    .email('Please provide a valid email address'),
   password: z
     .string({ required_error: 'Password is required' })
     .min(1, 'Password is required')
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z
+    .string({ required_error: 'Current password is required' })
+    .min(1, 'Current password is required'),
+  newPassword: z
+    .string({ required_error: 'New password is required' })
+    .min(6, 'New password must be at least 6 characters long')
+    .max(128, 'New password cannot exceed 128 characters')
+});
+
 module.exports = {
-  registerSchema,
-  loginSchema
+  registerAdminSchema,
+  registerSchema: registerAdminSchema, // alias for backward-compatibility
+  loginSchema,
+  changePasswordSchema
 };

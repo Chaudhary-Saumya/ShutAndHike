@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Name is required'],
       trim: true,
       minlength: [2, 'Name must be at least 2 characters'],
-      maxlength: [50, 'Name cannot exceed 50 characters']
+      maxlength: [100, 'Name cannot exceed 100 characters']
     },
     email: {
       type: String,
@@ -21,17 +21,10 @@ const userSchema = new mongoose.Schema(
       index: true,
       match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,})+$/, 'Please provide a valid email address']
     },
-    phone: {
-      type: String,
-      unique: true,
-      trim: true,
-      index: true,
-      match: [/^\d{10}$/, 'Phone number must be exactly 10 digits']
-    },
     password: {
       type: String,
       required: [true, 'Password is required'],
-      minlength: [8, 'Password must be at least 8 characters'],
+      minlength: [6, 'Password must be at least 6 characters'],
       select: false
     },
     role: {
@@ -40,7 +33,12 @@ const userSchema = new mongoose.Schema(
         values: ROLE_VALUES,
         message: '{VALUE} is not a valid role. Allowed roles: Admin, Manager, Employee, Client'
       },
-      default: ROLES.CLIENT
+      default: ROLES.ADMIN
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: null
     },
     designation: {
       type: String,
@@ -48,7 +46,24 @@ const userSchema = new mongoose.Schema(
       maxlength: [100, 'Designation cannot exceed 100 characters'],
       default: null
     },
+    department: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Department cannot exceed 100 characters'],
+      default: null
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    // Maintained for backward-compatibility with existing code
     userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    reportingTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null
@@ -64,7 +79,9 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    discriminatorKey: 'role',
     toJSON: {
+      virtuals: true,
       transform: (_, ret) => {
         delete ret.password;
         delete ret.__v;
@@ -74,9 +91,20 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Keep userId and createdBy in sync
+userSchema.pre('save', function (next) {
+  if (this.createdBy && !this.userId) {
+    this.userId = this.createdBy;
+  } else if (this.userId && !this.createdBy) {
+    this.createdBy = this.userId;
+  }
+  next();
+});
+
+// Password hashing
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
-  const salt = await bcrypt.genSalt(12);
+  const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
@@ -89,11 +117,14 @@ userSchema.methods.generateAuthToken = function () {
     {
       id: this._id,
       email: this.email,
-      role: this.role
+      role: this.role,
+      name: this.name
     },
     process.env.JWT_SECRET || 'shut_hike_jwt_secret',
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 };
 
-module.exports = mongoose.model('User', userSchema);
+const User = mongoose.models.User || mongoose.model('User', userSchema);
+
+module.exports = User;

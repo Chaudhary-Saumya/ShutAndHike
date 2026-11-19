@@ -1,12 +1,9 @@
-const admin = (req, res, next) => {
-  const role = req.user?.role || req.data?.role;
+const { authorize } = require('./auth.middleware');
+const { ROLES } = require('../config/roles');
 
-  if (!role || role.toLowerCase() !== 'admin') {
-    return res.status(403).json({ msg: "Access denied. Only admin can perform this action." });
-  }
-
-  next();
-};
+// Standalone admin-only guard
+const admin = authorize(ROLES.ADMIN);
 
 admin.admin = admin;
+
 module.exports = admin;

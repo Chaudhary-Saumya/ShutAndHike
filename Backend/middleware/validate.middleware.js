@@ -1,8 +1,13 @@
 const { ZodError } = require('zod');
 
-const validate = (schema) => (req, res, next) => {
+/**
+ * Validates request data (body, params, or query) against a Zod schema.
+ * @param {import('zod').ZodSchema} schema
+ * @param {'body' | 'params' | 'query'} [source='body']
+ */
+const validate = (schema, source = 'body') => (req, res, next) => {
   try {
-    req.body = schema.parse(req.body);
+    req[source] = schema.parse(req[source]);
     next();
   } catch (error) {
     if (error instanceof ZodError) {
@@ -11,7 +16,7 @@ const validate = (schema) => (req, res, next) => {
         success: false,
         message: 'Validation failed',
         errors: issues.map((err) => ({
-          field: err.path.join('.'),
+          field: err.path.join('.') || source,
           message: err.message
         }))
       });

@@ -1,8 +1,10 @@
 const rateLimit = require('express-rate-limit');
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: isDev ? 1000 : 30, // generous during development/testing
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -13,7 +15,7 @@ const authLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: isDev ? 5000 : 300,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

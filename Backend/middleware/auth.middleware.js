@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
+const { ROLES } = require('../config/roles');
 
 const authenticate = async (req, res, next) => {
   try {
@@ -14,7 +15,7 @@ const authenticate = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required. No token provided.'
+        message: 'Authentication required. No authorization token provided.'
       });
     }
 
@@ -32,11 +33,12 @@ const authenticate = async (req, res, next) => {
     if (!user.isActive) {
       return res.status(403).json({
         success: false,
-        message: 'Account has been deactivated.'
+        message: 'Your account has been deactivated. Please contact an administrator.'
       });
     }
 
     req.user = user;
+    req.data = user; // Kept for backward compatibility
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -55,7 +57,7 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-const authorize = (...roles) => {
+const authorize = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
@@ -64,10 +66,15 @@ const authorize = (...roles) => {
       });
     }
 
-    if (!roles.includes(req.user.role)) {
+    const userRole = req.user.role;
+    const isAllowed = allowedRoles.some(
+      (role) => role.toLowerCase() === userRole.toLowerCase()
+    );
+
+    if (!isAllowed) {
       return res.status(403).json({
         success: false,
-        message: `Access denied. Role '${req.user.role}' is not authorized to access this resource.`
+        message: `Access denied. Role '${userRole}' is not authorized to perform this action. Required role: ${allowedRoles.join(' or ')}.`
       });
     }
 
@@ -75,7 +82,12 @@ const authorize = (...roles) => {
   };
 };
 
+const isAdmin = authorize(ROLES.ADMIN);
+const isAdminOrManager = authorize(ROLES.ADMIN, ROLES.MANAGER);
+
 module.exports = {
   authenticate,
-  authorize
+  authorize,
+  isAdmin,
+  isAdminOrManager
 };
