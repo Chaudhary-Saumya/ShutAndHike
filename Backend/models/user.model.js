@@ -21,6 +21,13 @@ const userSchema = new mongoose.Schema(
       index: true,
       match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,})+$/, 'Please provide a valid email address']
     },
+    phone: {
+      type: String,
+      unique: true,
+      trim: true,
+      index: true,
+      match: [/^\d{10}$/, 'Phone number must be exactly 10 digits']
+    },
     password: {
       type: String,
       required: [true, 'Password is required'],
@@ -34,6 +41,17 @@ const userSchema = new mongoose.Schema(
         message: '{VALUE} is not a valid role. Allowed roles: Admin, Manager, Employee, Client'
       },
       default: ROLES.CLIENT
+    },
+    designation: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Designation cannot exceed 100 characters'],
+      default: null
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
     },
     isActive: {
       type: Boolean,

@@ -85,3 +85,23 @@ A full-stack agency and project management platform featuring role-based access 
 | `GET` | `/api/auth/me` | Fetch authenticated user profile |
 | `GET` | `/api/auth/roles` | List available roles and descriptions |
 
+## Manager API Endpoints
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/manager/create-manager` | Create a new manager account (`name`, `email`, `password`, `phone`, `designation`) |
+| `GET` | `/api/manager/get-manager` | Fetch all manager accounts with creator info |
+| `PUT` | `/api/manager/update-manager/:id` | Update manager account details by ID |
+| `DELETE` | `/api/manager/delete-manager/:id` | Delete a manager account by ID |
+
+---
+
+## Employee API Endpoints
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/employee/create-employee` | Create a new employee account (Admin only) |
+| `GET` | `/api/employee/get-employee` | Fetch all employee accounts |
+| `GET` | `/api/employee/get-employee/:id` | Fetch single employee account by ID |
+| `PUT` | `/api/employee/update-employee/:id` | Update employee account by ID |
+| `DELETE` | `/api/employee/delete-employee/:id` | Delete employee account by ID |

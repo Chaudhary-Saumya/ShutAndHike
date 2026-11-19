@@ -4,6 +4,8 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth.routes');
+const managerRoutes = require('./routes/manager.routes')
+const employeeRoutes = require('./routes/employee.routes')
 const errorHandler = require('./middleware/error.middleware');
 const { apiLimiter } = require('./middleware/rateLimiter.middleware');
 
@@ -48,6 +50,8 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/manager',managerRoutes)
+app.use('/api/employee',employeeRoutes)
 
 app.use((req, res) => {
   res.status(404).json({
