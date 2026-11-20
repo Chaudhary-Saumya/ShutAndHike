@@ -36,15 +36,9 @@ const userSchema = new mongoose.Schema(
       default: ROLES.ADMIN
     },
     phone: {
-      type: Number,
-      default: null,
-      validate: {
-        validator: function (v) {
-          if (v === null || v === undefined) return true;
-          return v >= 1000000000 && v <= 9999999999;
-        },
-        message: 'Phone number must be exactly 10 digits'
-      }
+      type: String,
+      trim: true,
+      default: null
     },
     designation: {
       type: String,
@@ -52,71 +46,44 @@ const userSchema = new mongoose.Schema(
       maxlength: [100, 'Designation cannot exceed 100 characters'],
       default: null
     },
-    department: {
-      type: String,
-      trim: true,
-      maxlength: [100, 'Department cannot exceed 100 characters'],
-      default: null
-    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null
     },
-    // Maintained for backward-compatibility with existing code
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null
-    },
-    reportingTo: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null
-    },
+    // Access status (true = active, false = inactive/deactivated)
     isActive: {
       type: Boolean,
       default: true
-    },
-    lastLogin: {
-      type: Date,
-      default: null
     }
   },
   {
     timestamps: true,
-    discriminatorKey: 'role',
     toJSON: {
       virtuals: true,
       transform: (_, ret) => {
         delete ret.password;
         delete ret.__v;
+        ret.accessStatus = ret.isActive ? 'active' : 'inactive';
         return ret;
       }
     }
   }
 );
 
-// Keep userId and createdBy in sync
-userSchema.pre('save', function () {
-  if (this.createdBy && !this.userId) {
-    this.userId = this.createdBy;
-  } else if (this.userId && !this.createdBy) {
-    this.createdBy = this.userId;
-  }
-});
-
-// Password hashing
+// Hash password before saving
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
+// Compare password
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
+// Generate JWT Auth Token
 userSchema.methods.generateAuthToken = function () {
   return jwt.sign(
     {

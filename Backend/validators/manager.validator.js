@@ -18,7 +18,10 @@ const createManagerSchema = z.object({
     .max(128, 'Password cannot exceed 128 characters'),
   phone: phoneSchema,
   designation: z.string().trim().max(100).optional().default('Manager'),
-  department: z.string().trim().max(100).optional().default('Operations')
+  // Access status can be provided as boolean or 'active' / 'inactive' string
+  isActive: z.boolean().optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+  accessStatus: z.enum(['active', 'inactive']).optional()
 });
 
 const updateManagerSchema = z.object({
@@ -27,8 +30,9 @@ const updateManagerSchema = z.object({
   password: z.string().min(6).max(128).optional(),
   phone: phoneSchema,
   designation: z.string().trim().max(100).optional(),
-  department: z.string().trim().max(100).optional(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+  accessStatus: z.enum(['active', 'inactive']).optional()
 });
 
 module.exports = {

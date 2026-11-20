@@ -12,14 +12,14 @@ const getCookieOptions = () => {
 };
 
 /**
- * Register a new user account.
- * Accepts any valid role from the request body (Admin, Manager, Employee, Client).
+ * Public registration: strictly creates Admin account.
+ * Managers, Employees, and Clients cannot self-register; they are created by higher roles.
  */
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, role, phone, designation } = req.body;
+    const { name, email, password, phone } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -27,23 +27,22 @@ const register = async (req, res, next) => {
       });
     }
 
-    const user = await User.create({
+    const admin = await User.create({
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password: password.trim(),
-      role: role || ROLES.ADMIN,
-      phone: phone ? Number(phone) : null,
-      designation: designation ? designation.trim() : null
+      role: ROLES.ADMIN,
+      phone: phone ? String(phone).trim() : null
     });
 
-    const token = user.generateAuthToken();
+    const token = admin.generateAuthToken();
     res.cookie('token', token, getCookieOptions());
 
     return res.status(201).json({
       success: true,
-      message: 'User registered successfully.',
+      message: 'Admin registered successfully.',
       data: {
-        user,
+        user: admin,
         token
       }
     });
@@ -53,13 +52,13 @@ const register = async (req, res, next) => {
 };
 
 /**
- * Login for any valid active role (Admin, Manager, Employee, Client)
+ * Login for any active user (Admin, Manager, Employee, Client)
  */
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -82,9 +81,6 @@ const login = async (req, res, next) => {
       });
     }
 
-    user.lastLogin = new Date();
-    await user.save({ validateBeforeSave: false });
-
     const token = user.generateAuthToken();
     res.cookie('token', token, getCookieOptions());
 
@@ -101,6 +97,9 @@ const login = async (req, res, next) => {
   }
 };
 
+/**
+ * Logout
+ */
 const logout = async (req, res) => {
   const isProduction = process.env.NODE_ENV === 'production';
   res.clearCookie('token', {
@@ -115,11 +114,12 @@ const logout = async (req, res) => {
   });
 };
 
+/**
+ * Get current authenticated user profile
+ */
 const getMe = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id)
-      .populate('createdBy', 'name email role')
-      .populate('reportingTo', 'name email role');
+    const user = await User.findById(req.user._id).populate('createdBy', 'name email role');
 
     return res.status(200).json({
       success: true,
@@ -132,6 +132,9 @@ const getMe = async (req, res, next) => {
   }
 };
 
+/**
+ * Change current user password
+ */
 const changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;

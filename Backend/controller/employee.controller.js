@@ -3,11 +3,21 @@ const User = require('../models/user.model');
 const { ROLES } = require('../config/roles');
 
 /**
+ * Helper to resolve access status from request body
+ */
+const resolveAccessStatus = (body) => {
+  if (body.isActive !== undefined) return Boolean(body.isActive);
+  if (body.status !== undefined) return body.status === 'active';
+  if (body.accessStatus !== undefined) return body.accessStatus === 'active';
+  return true;
+};
+
+/**
  * Create Employee (Admin and Manager)
  */
 const CreateEmployee = async (req, res, next) => {
   try {
-    const { name, email, password, phone, designation, department, reportingTo } = req.body;
+    const { name, email, password, phone, designation } = req.body;
 
     const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
     if (existingUser) {
@@ -17,36 +27,27 @@ const CreateEmployee = async (req, res, next) => {
       });
     }
 
-    const creatorId = req.user?._id || req.data?._id;
-    const creatorRole = req.user?.role || req.data?.role;
-
-    // Default reportingTo to the creating manager if not explicitly specified
-    let supervisorId = reportingTo || null;
-    if (!supervisorId && creatorRole === ROLES.MANAGER) {
-      supervisorId = creatorId;
-    }
+    const isActive = resolveAccessStatus(req.body);
 
     const employee = await User.create({
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password: password.trim(),
       role: ROLES.EMPLOYEE,
-      phone: phone ? Number(phone) : null,
+      phone: phone ? String(phone).trim() : null,
       designation: designation ? designation.trim() : 'Employee',
-      department: department ? department.trim() : 'Operations',
-      createdBy: creatorId,
-      userId: creatorId,
-      reportingTo: supervisorId
+      isActive,
+      createdBy: req.user._id
     });
 
-    const populated = await User.findById(employee._id)
-      .populate('createdBy', 'name email role')
-      .populate('reportingTo', 'name email role');
+    const populated = await User.findById(employee._id).populate('createdBy', 'name email role');
 
     return res.status(201).json({
       success: true,
       message: 'Employee created successfully.',
-      CreateEmployee: populated
+      data: { employee: populated },
+      CreateEmployee: populated,
+      employee: populated
     });
   } catch (error) {
     next(error);
@@ -55,7 +56,6 @@ const CreateEmployee = async (req, res, next) => {
 
 /**
  * Get All Employees (Admin and Manager)
- * Only returns users with role 'Employee'.
  */
 const GetEmployee = async (req, res, next) => {
   try {
@@ -70,27 +70,23 @@ const GetEmployee = async (req, res, next) => {
       filter.$or = [
         { name: regex },
         { email: regex },
-        { designation: regex },
-        { department: regex }
+        { phone: regex },
+        { designation: regex }
       ];
     }
 
-    if (req.query.reportingTo && mongoose.Types.ObjectId.isValid(req.query.reportingTo)) {
-      filter.reportingTo = req.query.reportingTo;
+    if (req.query.designation) {
+      filter.designation = new RegExp(req.query.designation.trim(), 'i');
     }
 
-    if (req.query.department) {
-      filter.department = req.query.department.trim();
-    }
-
-    if (req.query.status) {
-      filter.isActive = req.query.status === 'active';
+    if (req.query.status || req.query.accessStatus) {
+      const statusParam = req.query.status || req.query.accessStatus;
+      filter.isActive = statusParam === 'active';
     }
 
     const [employees, total] = await Promise.all([
       User.find(filter)
         .populate('createdBy', 'name email role')
-        .populate('reportingTo', 'name email role')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -100,6 +96,7 @@ const GetEmployee = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       data: {
+        employees,
         pagination: {
           total,
           page,
@@ -107,8 +104,6 @@ const GetEmployee = async (req, res, next) => {
           totalPages: Math.ceil(total / limit)
         }
       },
-      // Backward-compatibility keys
-      msg: 'read the employee',
       GetEmployee: employees
     });
   } catch (error) {
@@ -139,8 +134,7 @@ const GetByIdEmployee = async (req, res, next) => {
     }
 
     const employee = await User.findOne({ _id: id, role: ROLES.EMPLOYEE })
-      .populate('createdBy', 'name email role')
-      .populate('reportingTo', 'name email role');
+      .populate('createdBy', 'name email role');
 
     if (!employee) {
       return res.status(404).json({
@@ -151,8 +145,9 @@ const GetByIdEmployee = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      msg: 'Employee fetched successfully',
-      GetByIdEmployee: employee
+      data: { employee },
+      GetByIdEmployee: employee,
+      employee
     });
   } catch (error) {
     next(error);
@@ -181,7 +176,7 @@ const UpdateEmployee = async (req, res, next) => {
       });
     }
 
-    const { name, email, password, phone, designation, department, reportingTo, isActive } = req.body;
+    const { name, email, password, phone, designation } = req.body;
 
     if (email && email.trim().toLowerCase() !== employee.email) {
       const emailConflict = await User.findOne({
@@ -199,28 +194,68 @@ const UpdateEmployee = async (req, res, next) => {
 
     if (name) employee.name = name.trim();
     if (phone !== undefined) employee.phone = phone ? String(phone).trim() : null;
-    if (designation !== undefined) employee.designation = designation ? designation.trim() : employee.designation;
-    if (department !== undefined) employee.department = department ? department.trim() : employee.department;
-    if (reportingTo !== undefined) {
-      employee.reportingTo = reportingTo && mongoose.Types.ObjectId.isValid(reportingTo) ? reportingTo : null;
-    }
-    if (isActive !== undefined) employee.isActive = Boolean(isActive);
+    if (designation !== undefined) employee.designation = designation ? designation.trim() : null;
 
-    // Safely update password with proper hashing
+    if (req.body.isActive !== undefined || req.body.status !== undefined || req.body.accessStatus !== undefined) {
+      employee.isActive = resolveAccessStatus(req.body);
+    }
+
     if (password && password.trim().length > 0) {
       employee.password = password.trim();
     }
 
     await employee.save();
 
-    const updated = await User.findById(id)
-      .populate('createdBy', 'name email role')
-      .populate('reportingTo', 'name email role');
+    const updated = await User.findById(id).populate('createdBy', 'name email role');
 
     return res.status(200).json({
       success: true,
       message: 'Employee updated successfully.',
+      data: { employee: updated },
       UpdateEmployee: updated
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Enable / Disable Employee Status (Admin and Manager)
+ */
+const UpdateEmployeeStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid Employee ID format.'
+      });
+    }
+
+    const employee = await User.findOne({ _id: id, role: ROLES.EMPLOYEE });
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found.'
+      });
+    }
+
+    if (req.body.isActive !== undefined || req.body.status !== undefined || req.body.accessStatus !== undefined) {
+      employee.isActive = resolveAccessStatus(req.body);
+    } else {
+      employee.isActive = !employee.isActive;
+    }
+
+    await employee.save();
+
+    const updated = await User.findById(id).populate('createdBy', 'name email role');
+
+    return res.status(200).json({
+      success: true,
+      message: `Employee account successfully ${employee.isActive ? 'enabled' : 'disabled'}.`,
+      data: { employee: updated },
+      employee: updated
     });
   } catch (error) {
     next(error);
@@ -254,6 +289,7 @@ const DeleteEmployee = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: 'Employee deleted successfully.',
+      data: { employee: deletedEmployee },
       DeleteEmployee: deletedEmployee
     });
   } catch (error) {
@@ -266,5 +302,13 @@ module.exports = {
   GetEmployee,
   GetByIdEmployee,
   UpdateEmployee,
-  DeleteEmployee
+  UpdateEmployeeStatus,
+  DeleteEmployee,
+  // Modern naming aliases
+  createEmployee: CreateEmployee,
+  getAllEmployees: GetEmployee,
+  getEmployeeById: GetByIdEmployee,
+  updateEmployee: UpdateEmployee,
+  updateEmployeeStatus: UpdateEmployeeStatus,
+  deleteEmployee: DeleteEmployee
 };

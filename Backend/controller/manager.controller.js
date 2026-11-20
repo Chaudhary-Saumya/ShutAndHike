@@ -3,11 +3,21 @@ const User = require('../models/user.model');
 const { ROLES } = require('../config/roles');
 
 /**
+ * Helper to resolve access status from request body
+ */
+const resolveAccessStatus = (body) => {
+  if (body.isActive !== undefined) return Boolean(body.isActive);
+  if (body.status !== undefined) return body.status === 'active';
+  if (body.accessStatus !== undefined) return body.accessStatus === 'active';
+  return true;
+};
+
+/**
  * Create Manager (Admin Only)
  */
 const CreateManager = async (req, res, next) => {
   try {
-    const { name, email, password, phone, designation, department } = req.body;
+    const { name, email, password, phone, designation } = req.body;
 
     const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
     if (existingUser) {
@@ -17,25 +27,27 @@ const CreateManager = async (req, res, next) => {
       });
     }
 
-    const adminId = req.user?._id || req.data?._id;
+    const isActive = resolveAccessStatus(req.body);
 
     const manager = await User.create({
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password: password.trim(),
       role: ROLES.MANAGER,
-      phone: phone ? Number(phone) : null,
+      phone: phone ? String(phone).trim() : null,
       designation: designation ? designation.trim() : 'Manager',
-      department: department ? department.trim() : 'Operations',
-      createdBy: adminId,
-      userId: adminId
+      isActive,
+      createdBy: req.user._id
     });
 
     const populated = await User.findById(manager._id).populate('createdBy', 'name email role');
 
     return res.status(201).json({
-      msg: 'manager created successfully',
-      CreateManager: populated
+      success: true,
+      message: 'Manager created successfully.',
+      data: { manager: populated },
+      CreateManager: populated,
+      manager: populated
     });
   } catch (error) {
     next(error);
@@ -44,7 +56,6 @@ const CreateManager = async (req, res, next) => {
 
 /**
  * Get All Managers (Admin and Manager)
- * Only returns users with role 'Manager'.
  */
 const ReadManager = async (req, res, next) => {
   try {
@@ -59,13 +70,18 @@ const ReadManager = async (req, res, next) => {
       filter.$or = [
         { name: regex },
         { email: regex },
-        { designation: regex },
-        { department: regex }
+        { phone: regex },
+        { designation: regex }
       ];
     }
 
-    if (req.query.status) {
-      filter.isActive = req.query.status === 'active';
+    if (req.query.designation) {
+      filter.designation = new RegExp(req.query.designation.trim(), 'i');
+    }
+
+    if (req.query.status || req.query.accessStatus) {
+      const statusParam = req.query.status || req.query.accessStatus;
+      filter.isActive = statusParam === 'active';
     }
 
     const [managers, total] = await Promise.all([
@@ -79,8 +95,8 @@ const ReadManager = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Managers retrieved successfully.',
       data: {
+        managers,
         pagination: {
           total,
           page,
@@ -88,8 +104,6 @@ const ReadManager = async (req, res, next) => {
           totalPages: Math.ceil(total / limit)
         }
       },
-      // Backward-compatibility keys
-      msg: 'read the manager',
       ReadManager: managers
     });
   } catch (error) {
@@ -122,7 +136,9 @@ const GetByIdManager = async (req, res, next) => {
     }
 
     return res.status(200).json({
-      success: true,manager
+      success: true,
+      data: { manager },
+      manager
     });
   } catch (error) {
     next(error);
@@ -151,7 +167,7 @@ const UpdateManager = async (req, res, next) => {
       });
     }
 
-    const { name, email, password, phone, designation, department, isActive } = req.body;
+    const { name, email, password, phone, designation } = req.body;
 
     if (email && email.trim().toLowerCase() !== manager.email) {
       const emailConflict = await User.findOne({
@@ -169,11 +185,12 @@ const UpdateManager = async (req, res, next) => {
 
     if (name) manager.name = name.trim();
     if (phone !== undefined) manager.phone = phone ? String(phone).trim() : null;
-    if (designation !== undefined) manager.designation = designation ? designation.trim() : manager.designation;
-    if (department !== undefined) manager.department = department ? department.trim() : manager.department;
-    if (isActive !== undefined) manager.isActive = Boolean(isActive);
+    if (designation !== undefined) manager.designation = designation ? designation.trim() : null;
 
-    // Securely update password if provided
+    if (req.body.isActive !== undefined || req.body.status !== undefined || req.body.accessStatus !== undefined) {
+      manager.isActive = resolveAccessStatus(req.body);
+    }
+
     if (password && password.trim().length > 0) {
       manager.password = password.trim();
     }
@@ -183,8 +200,53 @@ const UpdateManager = async (req, res, next) => {
     const updated = await User.findById(id).populate('createdBy', 'name email role');
 
     return res.status(200).json({
-      success: true, msg: 'Manager update successfully',
+      success: true,
+      message: 'Manager updated successfully.',
+      data: { manager: updated },
       UpdateManager: updated
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Enable / Disable Manager Status (Admin Only)
+ */
+const UpdateManagerStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid Manager ID format.'
+      });
+    }
+
+    const manager = await User.findOne({ _id: id, role: ROLES.MANAGER });
+    if (!manager) {
+      return res.status(404).json({
+        success: false,
+        message: 'Manager not found.'
+      });
+    }
+
+    if (req.body.isActive !== undefined || req.body.status !== undefined || req.body.accessStatus !== undefined) {
+      manager.isActive = resolveAccessStatus(req.body);
+    } else {
+      manager.isActive = !manager.isActive;
+    }
+
+    await manager.save();
+
+    const updated = await User.findById(id).populate('createdBy', 'name email role');
+
+    return res.status(200).json({
+      success: true,
+      message: `Manager account successfully ${manager.isActive ? 'enabled' : 'disabled'}.`,
+      data: { manager: updated },
+      manager: updated
     });
   } catch (error) {
     next(error);
@@ -218,6 +280,7 @@ const DeleteManager = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: 'Manager deleted successfully.',
+      data: { manager: deletedManager },
       DeleteManager: deletedManager
     });
   } catch (error) {
@@ -230,5 +293,13 @@ module.exports = {
   ReadManager,
   GetByIdManager,
   UpdateManager,
-  DeleteManager
+  UpdateManagerStatus,
+  DeleteManager,
+  // Modern naming aliases
+  createManager: CreateManager,
+  getAllManagers: ReadManager,
+  getManagerById: GetByIdManager,
+  updateManager: UpdateManager,
+  updateManagerStatus: UpdateManagerStatus,
+  deleteManager: DeleteManager
 };

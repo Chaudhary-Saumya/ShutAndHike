@@ -6,23 +6,22 @@ const mongoIdParamSchema = z.object({
   id: z.string().regex(mongoIdRegex, 'Invalid MongoDB ObjectId format')
 });
 
+// Clean, optional phone field (string, number, or null/empty)
 const phoneSchema = z
   .union([
-    z
-      .number()
-      .int()
-      .min(1000000000, 'Phone number must be at least 10 digits')
-      .max(9999999999, 'Phone number cannot exceed 10 digits'),
-    z
-      .string()
-      .trim()
-      .regex(/^\d{10}$/, 'Phone number must be exactly 10 digits')
-      .transform((val) => Number(val)),
-    z.literal('').transform(() => null)
+    z.string().trim(),
+    z.number().transform((n) => String(n)),
+    z.null(),
+    z.undefined()
   ])
   .optional()
-  .nullable()
-  .transform((val) => (val === null || val === undefined ? null : Number(val)));
+  .transform((val) => (val && String(val).trim() ? String(val).trim() : null));
+
+const updateStatusSchema = z.object({
+  isActive: z.boolean().optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+  accessStatus: z.enum(['active', 'inactive']).optional()
+});
 
 const paginationQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -36,5 +35,6 @@ module.exports = {
   mongoIdRegex,
   mongoIdParamSchema,
   phoneSchema,
+  updateStatusSchema,
   paginationQuerySchema
 };

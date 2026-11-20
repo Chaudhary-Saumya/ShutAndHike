@@ -1,5 +1,5 @@
 const { z } = require('zod');
-const { phoneSchema, mongoIdRegex } = require('./common.validator');
+const { phoneSchema } = require('./common.validator');
 
 const createEmployeeSchema = z.object({
   name: z
@@ -18,12 +18,10 @@ const createEmployeeSchema = z.object({
     .max(128, 'Password cannot exceed 128 characters'),
   phone: phoneSchema,
   designation: z.string().trim().max(100).optional().default('Employee'),
-  department: z.string().trim().max(100).optional().default('Delivery'),
-  reportingTo: z
-    .string()
-    .regex(mongoIdRegex, 'reportingTo must be a valid MongoDB ObjectId')
-    .optional()
-    .nullable()
+  // Access status can be provided as boolean or 'active' / 'inactive' string
+  isActive: z.boolean().optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+  accessStatus: z.enum(['active', 'inactive']).optional()
 });
 
 const updateEmployeeSchema = z.object({
@@ -32,13 +30,9 @@ const updateEmployeeSchema = z.object({
   password: z.string().min(6).max(128).optional(),
   phone: phoneSchema,
   designation: z.string().trim().max(100).optional(),
-  department: z.string().trim().max(100).optional(),
-  reportingTo: z
-    .string()
-    .regex(mongoIdRegex, 'reportingTo must be a valid MongoDB ObjectId')
-    .optional()
-    .nullable(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+  accessStatus: z.enum(['active', 'inactive']).optional()
 });
 
 module.exports = {
