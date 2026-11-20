@@ -8,6 +8,7 @@ const managerRoutes = require('./routes/manager.routes');
 const employeeRoutes = require('./routes/employee.routes');
 const clientRoutes = require('./routes/client.routes');
 const userRoutes = require('./routes/user.routes');
+const companyRoutes = require('./routes/company.routes');
 const errorHandler = require('./middleware/error.middleware');
 const { apiLimiter } = require('./middleware/rateLimiter.middleware');
 
@@ -60,6 +61,7 @@ app.use('/api/manager', managerRoutes);
 app.use('/api/employee', employeeRoutes);
 app.use('/api/client', clientRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/company', companyRoutes);
 
 // Catch 404 for unhandled routes
 app.use((req, res) => {
