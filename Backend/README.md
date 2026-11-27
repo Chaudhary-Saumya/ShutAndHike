@@ -109,7 +109,21 @@ Auth: `Authorization: Bearer <token>` or Cookie `token=<token>`
 
 ---
 
-### 9. System Health (`/health`)
+### 9. Client Services (`/api/client_service`)
+
+| # | Method | Endpoint | Access | Description |
+| :-: | :--- | :--- | :--- | :--- |
+| 1 | `POST` | `/api/client_service` | Admin, Manager, Client | Create Client Service from accepted Proposal |
+| 2 | `GET` | `/api/client_service` | Admin, Manager, Client | List Client Services (`?page`, `?limit`, `?status`, `?clientId`, `?search`) |
+| 3 | `GET` | `/api/client_service/client/:clientId` | Admin, Manager, Client | Get Client Services by Client ID (Client: own only) |
+| 4 | `GET` | `/api/client_service/:id` | Admin, Manager, Client | Get Client Service details by ID (Client: own only) |
+| 5 | `PATCH` | `/api/client_service/:id/status` | Admin, Manager | Update Client Service status (`active`, `paused`, `completed`, `cancelled`) |
+| 6 | `PUT` | `/api/client_service/:id` | Admin, Manager | Update Client Service details, pricing & dates |
+| 7 | `DELETE` | `/api/client_service/:id` | Admin, Manager | Permanently delete Client Service |
+
+---
+
+### 10. System Health (`/health`)
 
 | # | Method | Endpoint | Access | Description |
 | :-: | :--- | :--- | :--- | :--- |
